@@ -1,6 +1,8 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
@@ -8,57 +10,57 @@ import searchengine.dto.statistics.DetailedStatisticsItem;
 import searchengine.dto.statistics.StatisticsData;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.TotalStatistics;
-
+import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final Random random = new Random();
     private final SitesList sites;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final LemmaRepository lemmaRepository;
+    private final Logger logger = LogManager.getLogger(StatisticsServiceImpl.class);
 
     @Override
     public StatisticsResponse getStatistics() {
-        String[] statuses = { "INDEXED", "FAILED", "INDEXING" };
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };
-
         TotalStatistics total = new TotalStatistics();
+        List<DetailedStatisticsItem> detailedList = new ArrayList<>();
         total.setSites(sites.getSites().size());
         total.setIndexing(true);
-
-        List<DetailedStatisticsItem> detailed = new ArrayList<>();
-        List<Site> sitesList = sites.getSites();
-        for(int i = 0; i < sitesList.size(); i++) {
-            Site site = sitesList.get(i);
+        for (Site site : sites.getSites()) {
             DetailedStatisticsItem item = new DetailedStatisticsItem();
             item.setName(site.getName());
             item.setUrl(site.getUrl());
-            int pages = random.nextInt(1_000);
-            int lemmas = pages * random.nextInt(1_000);
-            item.setPages(pages);
-            item.setLemmas(lemmas);
-            item.setStatus(statuses[i % 3]);
-            item.setError(errors[i % 3]);
-            item.setStatusTime(System.currentTimeMillis() -
-                    (random.nextInt(10_000)));
-            total.setPages(total.getPages() + pages);
-            total.setLemmas(total.getLemmas() + lemmas);
-            detailed.add(item);
+            if (siteRepository.findSiteByUrl(site.getUrl()) != null) {
+                searchengine.model.Site modelSite = siteRepository.findSiteByUrl(site.getUrl());
+                Integer pagesCount = pageRepository.countBySite(modelSite);
+                pagesCount = pagesCount == null ? 0 : pagesCount;
+                int lemmasCount = lemmaRepository.countBySite(modelSite);
+                item.setStatus(String.valueOf(modelSite.getStatus()));
+                item.setPages(pagesCount);
+                item.setLemmas(lemmasCount);
+                item.setError(modelSite.getLastError());
+                item.setStatusTime(modelSite.getStatusTime().getTime());
+                detailedList.add(item);
+                total.setPages(total.getPages() + pagesCount);
+                total.setLemmas(total.getLemmas() + lemmasCount);
+            } else {
+                logger.error("\u001B[32m*** INDEXED SITES WERE NOT FOUND ***\u001B[0m");
+            }
         }
-
         StatisticsResponse response = new StatisticsResponse();
         StatisticsData data = new StatisticsData();
         data.setTotal(total);
-        data.setDetailed(detailed);
+        data.setDetailed(detailedList);
         response.setStatistics(data);
         response.setResult(true);
+        logger.info("\u001B[32m*** GENERAL STATISTIC ON ALL SITES HAVE BEEN COLLECTED SUCCESSFULLY ***\u001B[0m");
         return response;
     }
+
 }

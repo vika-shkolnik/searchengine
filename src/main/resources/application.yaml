@@ -1,10 +1,49 @@
 # example values
+server:
+  port: 8080
+
+spring:
+  datasource:
+    username: root
+    password: testtest
+    url: jdbc:mysql://localhost:3307/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: create
+    #show-sql: true пишет sql запросы только в консоль без логирования
+
+  output:
+    ansi:
+      enabled: ALWAYS
+  #main:
+    #banner-mode: "off"
 
 indexing-settings:
   sites:
-    - url: https://www.lenta.ru
-      name: Лента.ру
-    - url: https://www.skillbox.ru
-      name: Skillbox
-    - url: https://www.playback.ru
-      name: PlayBack.Ru
+    #- url: https://www.lenta.ru
+    #  name: Лента.ру
+    # - url: https://www.skillbox.ru
+    # name: Skillbox
+    - url: http://playground.epizy.com/
+      name: TestSite (with error 403)
+    - url: https://sendel.ru/
+      name: Sendel.ru
+
+logging:
+  #pattern:
+    #console: включить, чтобы логи не писалиcь в консоль
+  file.name: C:\Users\user\IdeaProjects\searchengine\src\main\java\searchengine\logs\logs.log
+  level:
+    org.springframework.web: ERROR
+    com.howtodoinjava: DEBUG
+    org.hibernate: ERROR
+    #org.hibernate.SQL: DEBUG #включить, чтобы sql писалиcь в logs.log
+
+user-agent-settings:
+  users:
+   - Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.
+   - Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referrer: http://www.google.com
