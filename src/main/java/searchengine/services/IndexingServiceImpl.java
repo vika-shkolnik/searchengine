@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jsoup.Connection;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import searchengine.model.*;
 import searchengine.config.SitesList;
@@ -19,7 +18,9 @@ import searchengine.utils.LinkParser;
 import searchengine.utils.SiteIndexer;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
+
 
 @Service
 @RequiredArgsConstructor
@@ -27,14 +28,10 @@ public class IndexingServiceImpl implements IndexingService {
     private final Logger logger = LogManager.getLogger(IndexingServiceImpl.class);
     private final SitesList sites;
     private final UserAgents agentCfg;
-    @Autowired
-    private SiteRepository repositorySite;
-    @Autowired
-    private PageRepository repositoryPage;
-    @Autowired
-    private LemmaRepository repositoryLemma;
-    @Autowired
-    private IndexRepository repositoryIndex;
+    private final SiteRepository repositorySite;
+    private final PageRepository repositoryPage;
+    private final LemmaRepository repositoryLemma;
+    private final IndexRepository repositoryIndex;
 
     @Override
     public IndexingResponse startIndexing() {
@@ -105,7 +102,7 @@ public class IndexingServiceImpl implements IndexingService {
             logger.error("\u001B[31m*** THE PAGE {} IS NOT SPECIFIED ***\u001B[0m", url);
             return new IndexingResponse("Страница не указана");
         }
-        url = endUrl(url).trim();
+        url = SiteIndexer.newUrl(url).trim();
         searchengine.config.Site siteCfg = findSiteCfgByUrl(url);
         if (siteCfg == null) {
             logger.error("\u001B[31m*** THIS PAGE {} IS LOCATED OUTSIDE THE SITES SPECIFIED IN THE CONFIGURATION FILE ***\u001B[0m",url);
@@ -122,21 +119,17 @@ public class IndexingServiceImpl implements IndexingService {
         return indexingAndSavePage(url, modelSite, path);
     }
 
-    private String endUrl (String url) {
-        return url.replace("www.", "");
-    }
-
     private searchengine.config.Site findSiteCfgByUrl(String url) {
         return sites.getSites().stream()
-                .filter(site -> url.contains(endUrl(site.getUrl())))
+                .filter(site -> url.contains(SiteIndexer.newUrl((site.getUrl()))))
                 .findFirst()
                 .orElse(null);
     }
 
     private IndexingResponse indexingAndSavePage(String url, Site modelSite, String path) {
         Connection connection = LinkParser.getConnection(url, agentCfg);
-        int statusCode = LinkParser.getStatusCode(connection);
-        if (statusCode >= 400 && statusCode <= 599) {
+        int statusCode = LinkParser.getStatusCode(Objects.requireNonNull(connection));
+        if ((statusCode >= 400 && statusCode <= 599) || statusCode == 0) {
             logger.error("\u001B[31m*** THIS PAGE IS UNAVAILABLE - {}, STATUSCODE {} ***\u001B[31m", url, statusCode);
             return new IndexingResponse("Страница недоступна. Код ответа: " + statusCode);
         }

@@ -15,6 +15,6 @@ public interface LemmaRepository extends JpaRepository<Lemma, Integer> {
 
     Integer countBySite(Site site);
 
-    @Query("SELECT l FROM Lemma AS l WHERE l.frequency < 300 " + "AND l.lemma IN (:lemmas) AND l.site =:site")
+    @Query("SELECT l FROM Lemma AS l WHERE l.lemma IN (:lemmas) AND l.site =:site")
     List<Lemma> selectLemmasBySite(Set<String> lemmas, Site site);
 }

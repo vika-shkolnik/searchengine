@@ -12,7 +12,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     #show-sql: true пишет sql запросы только в консоль без логирования
 
   output:
@@ -31,6 +31,8 @@ indexing-settings:
       name: TestSite (with error 403)
     - url: https://sendel.ru/
       name: Sendel.ru
+    - url: https://www.playback.ru/
+      name: Playback.ru
 
 logging:
   #pattern:

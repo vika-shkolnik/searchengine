@@ -8,9 +8,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.config.UserAgents;
+import searchengine.model.Site;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentSkipListSet;
-
+import static searchengine.utils.SiteIndexer.newUrl;
 
 public class LinkParser {
     private static final Logger logger = LogManager.getLogger(LinkParser.class);
@@ -24,19 +25,20 @@ public class LinkParser {
                     .ignoreHttpErrors(true)
                     .followRedirects(true);
         } catch (Exception e) {
-            logger.error("\u001B[31m*** ERROR GET CONNECTION ***\u001B[0m");
-            throw new RuntimeException();
+            logger.error("\u001B[31m*** ERROR GET CONNECTION ***\u001B[0m"  + "\n" + e);
+            //throw new RuntimeException();
         }
-
+        return null;
     }
 
     public static int getStatusCode(Connection connection)  {
         try {
             return connection.execute().statusCode();
         } catch (IOException e) {
-            logger.error("\u001B[31m*** ERROR RECEIVING THE STATUS CODE ***\u001B[0m");
-            throw new RuntimeException(e);
+            logger.error("\u001B[31m*** ERROR RECEIVING THE STATUS CODE ***\u001B[0m" + "\n" + e);
+            //throw new RuntimeException(e);
         }
+        return 0;
     }
 
     public static String getContent(Connection connection) {
@@ -44,14 +46,13 @@ public class LinkParser {
             try {
                 return connection.get().html();
             } catch (IOException e) {
-                logger.error("\u001B[31m*** ERROR RECEIVING PAGE CONTENT ***\u001B[0m");
-                throw new RuntimeException(e);
+                logger.error("\u001B[31m*** ERROR RECEIVING PAGE CONTENT ***\u001B[0m"  + "\n" + e);
             }
         }
         return "";
     }
 
-    public static ConcurrentSkipListSet<String> getLinks(Connection connection)  {
+    public static ConcurrentSkipListSet<String> getLinks(Connection connection, Site modelSite)  {
         ConcurrentSkipListSet<String> links = new ConcurrentSkipListSet<>();
         Document document;
         try {
@@ -59,14 +60,18 @@ public class LinkParser {
             Elements elements = document.select("body").select("a");
             for (Element element : elements) {
                 String link = element.absUrl("href");
-                if (isLink(link) && !isFile(link) && !link.isEmpty()) {
+                if (isLink(link) &&
+                        !isFile(link) &&
+                        !link.isEmpty() &&
+                        !containsPagination(link) &&
+                        newUrl(link).contains(newUrl(modelSite.getUrl()))) {
                     link = link.split("#")[0];
                     links.add(link);
                 }
             }
         } catch (IOException e) {
-            logger.error("\u001B[31m*** ERROR GETTING PAGE LINKS ***\u001B[0m");
-            throw new RuntimeException(e);
+            logger.error("\u001B[31m*** ERROR GETTING PAGE LINKS ***\u001B[0m"  + "\n" + e);
+            //throw new RuntimeException(e);
         }
         return links;
     }
@@ -89,7 +94,18 @@ public class LinkParser {
                 || link.contains(".doc")
                 || link.contains(".pptx")
                 || link.contains(".docx")
-                || link.contains("?_ga");
+                || link.contains("?_ga")
+                || link.contains(".zip")
+                || link.contains(".sql");
+    }
+
+    private static boolean containsPagination(String link) {
+        link = link.toLowerCase();
+        return link.contains("sort")
+                || link.contains("page")
+                || link.contains("size")
+                || link.contains("product_info");
+
     }
 
 }

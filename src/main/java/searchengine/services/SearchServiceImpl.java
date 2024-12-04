@@ -3,14 +3,12 @@ package searchengine.services;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import searchengine.dto.search.DataSearchItem;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.*;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
-import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.utils.LemmaFinder;
 import searchengine.utils.LemmaIndexer;
@@ -23,18 +21,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
 
-    @Autowired
-    private SiteRepository repositorySite;
-    @Autowired
-    private PageRepository repositoryPage;
-    @Autowired
-    private LemmaRepository repositoryLemma;
-    @Autowired
-    private IndexRepository repositoryIndex;
+    private final SiteRepository repositorySite;
+    private final LemmaRepository repositoryLemma;
+    private final IndexRepository repositoryIndex;
     private final Logger logger = LogManager.getLogger(IndexingServiceImpl.class);
     private static String lastQuery;
     private static List<DataSearchItem> data;
-
 
     @Override
     public SearchResponse getSearch(String query, String siteUrl, Integer offset, Integer limit) {
@@ -47,22 +39,21 @@ public class SearchServiceImpl implements SearchService {
         if (query.equals(lastQuery)) {
             buildResponse(offset, limit);
         }
-        Set<String> queryLemmas = LemmaFinder.collectLemmas(query).keySet();//Собираются леммы из запроса
-        List<Index> foundIndexes;
+        Set<String> queryLemmas = LemmaFinder.collectLemmas(query).keySet();
+        List<Index> foundIndexes = List.of();
         if (siteUrl == null) {
             List<Site> all = repositorySite.findAll();
             if (all.isEmpty()) {
                 logger.error("\u001B[31m*** NOT A SINGLE SITE WAS FOUND ***\u001B[0m");
                 return new SearchResponse("Не найдено ни одного сайта");
             }
-            if (!isIndexed(all))
-            {
+            if (!isIndexed(all)) {
                 logger.error("\u001B[31m*** NO INDEXED SITES HAVE BEEN FOUND ***\u001B[0m");
                 return new SearchResponse("Не найдено ни одного проиндексированного сайта");
             }
             foundIndexes = searchByAll(queryLemmas);
         }
-        else {
+        if  (siteUrl != null) {
             Site site = repositorySite.findSiteByUrl(siteUrl);
             if (site.getStatus() == Status.INDEXING)  {
                 logger.error("\u001B[31m*** THE SELECTED SITE HAS NOT BEEN INDEXED YET ***\u001B[0m");
